@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>手术器械识别消消乐 | 配对学习游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #fff9ef;  /* 奶白色基调 */
+            background-image: radial-gradient(circle at 20% 30%, rgba(255, 245, 220, 0.8) 0%, #fdf5e6 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', 'Roboto', 'Noto Sans', system-ui, -apple-system, 'Microsoft YaHei', sans-serif;
+            padding: 20px;
+        }
+
+        /* 游戏主面板 */
+        .game-container {
+            width: 100%;
+            max-width: 1400px;
+            background: rgba(255, 248, 235, 0.6);
+            border-radius: 70px 70px 55px 55px;
+            backdrop-filter: blur(3px);
+            box-shadow: 0 20px 35px rgba(0, 0, 0, 0.05), 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 20px 25px 35px;
+            transition: all 0.2s;
+        }
+
+        /* 标题区 */
+        .game-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.7rem;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #c28a5c, #a57144);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: 4px 4px 12px rgba(150, 90, 30, 0.15);
+            font-weight: 800;
+            display: inline-block;
+            padding: 0 20px;
+        }
+
+        h1::before {
+            content: "🩺";
+            font-size: 2.5rem;
+            color: #bc7a44;
+            margin-right: 12px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        h1::after {
+            content: "🔪";
+            font-size: 2.5rem;
+            color: #bc7a44;
+            margin-left: 12px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* 泡泡网格区域 */
+        .bubbles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 170px));
+            justify-content: center;
+            gap: 24px 20px;
+            margin: 20px 0 35px;
+            padding: 10px;
+        }
+
+        /* 3D立体泡泡卡片 */
+        .bubble-card {
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            max-width: 170px;
+            margin: 0 auto;
+            cursor: pointer;
+            transition: transform 0.2s ease, filter 0.1s;
+            filter: drop-shadow(0 12px 12px rgba(0, 0, 0, 0.2));
+            animation: floatGlow 3s infinite ease-in-out;
+        }
+
+        .bubble-inner {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px 10px;
+            box-sizing: border-box;
+            background: radial-gradient(circle at 35% 30%, rgba(255, 250, 240, 0.95), rgba(210, 165, 110, 0.85));
+            box-shadow: inset 0 -8px 0 rgba(0, 0, 0, 0.15), 0 12px 20px rgba(0, 0, 0, 0.3), 0 0 0 4px rgba(255, 240, 200, 0.7);
+            transition: all 0.1s;
+            font-weight: 800;
+            color: white;
+            text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+            font-size: 1.15rem;
+            word-break: break-word;
+            line-height: 1.3;
+            backdrop-filter: blur(2px);
+        }
+
+        /* 选中高亮效果 */
+        .bubble-card.selected .bubble-inner {
+            box-shadow: 0 0 0 5px gold, inset 0 -4px 0 rgba(0, 0, 0, 0.1), 0 12px 20px black;
+            transform: scale(1.02);
+            filter: brightness(1.05);
+        }
+
+        /* 已消除的泡泡完全透明且不可交互 */
+        .bubble-card.eliminated {
+            cursor: default;
+            pointer-events: none;
+            filter: drop-shadow(0 0 0 transparent);
+            animation: none;
+            opacity: 0;
+            transform: scale(0.85);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .bubble-card.eliminated .bubble-inner {
+            visibility: hidden;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        /* 悬浮效果 */
+        .bubble-card:not(.eliminated):hover {
+            transform: translateY(-8px) scale(1.02);
+            filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.25));
+        }
+
+        /* 开始按钮区域 */
+        .button-area {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .start-btn {
+            background: #e7c9a3;
+            border: none;
+            font-size: 1.8rem;
+            font-weight: bold;
+            padding: 12px 42px;
+            border-radius: 60px;
+            color: #6b3f1f;
+            box-shadow: 0 8px 0 #aa7c54;
+            cursor: pointer;
+            transition: 0.07s linear;
+            letter-spacing: 3px;
+            font-family: inherit;
+            background: linear-gradient(135deg, #f3deba, #e0bc8c);
+        }
+
+        .start-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 #aa7c54;
+        }
+
+        /* 胜利浮层 */
+        .victory-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 245, 220, 0.9);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: 0.2s;
+        }
+
+        .victory-card {
+            background: #fff7e8;
+            border-radius: 70px;
+            padding: 40px 60px;
+            text-align: center;
+            box-shadow: 0 30px 40px rgba(0, 0, 0, 0.2);
+            border: 2px solid #e7bc8e;
+            transform: scale(0.9);
+            transition: 0.2s cubic-bezier(0.34, 1.2, 0.64, 1);
+        }
+
+        .victory-card h2 {
+            font-size: 3rem;
+            color: #c2863a;
+            margin-bottom: 20px;
+            font-weight: 900;
+        }
+
+        .victory-card p {
+            font-size: 1.5rem;
+            color: #7b521f;
+        }
+
+        .victory-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .victory-overlay.show .victory-card {
+            transform: scale(1);
+        }
+
+        .info-tip {
+            text-align: center;
+            margin-top: 20px;
+            color: #b38b60;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        /* 响应式 */
+        @media (max-width: 680px) {
+            .bubbles-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 130px));
+                gap: 15px;
+            }
+
+            .bubble-inner {
+                font-size: 0.9rem;
+                padding: 12px 8px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .start-btn {
+                font-size: 1.4rem;
+                padding: 8px 30px;
+            }
+        }
+
+        @keyframes floatGlow {
+            0% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-5px);
+            }
+            100% {
+                transform: translateY(0px);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="game-header">
+        <h1>手术器械识别消消乐</h1>
+    </div>
+
+    <div class="bubbles-grid" id="bubbleGrid"></div>
+
+    <div class="button-area">
+        <button class="start-btn" id="startGameBtn">✨ 开始游戏 ✨</button>
+    </div>
+    <div class="info-tip">
+        💡 玩法：点击泡泡选中，再点击匹配的【器械名称】↔【对应作用】，配对成功一起消失！配对错误则取消选中，重新尝试~
+    </div>
+</div>
+
+<div id="victoryOverlay" class="victory-overlay">
+    <div class="victory-card">
+        <h2>🎉 恭喜你挑战成功！ 🎉</h2>
+        <p>🏆 手术器械大师 🏆</p>
+    </div>
+</div>
+
+<script>
+    // ---------- 器械数据集 (名称 + 对应作用) ----------
+    const INSTRUMENTS = [
+        { name: "血管钳", action: "止血、夹持、牵引" },
+        { name: "组织剪", action: "剪切组织、分离间隙" },
+        { name: "持针器", action: "夹持缝针、完成缝合" },
+        { name: "手术镊", action: "夹持组织、辅助暴露" },
+        { name: "手术拉钩", action: "拉开组织、暴露手术视野" },
+        { name: "高频电刀", action: "切割、止血" },
+        { name: "吸引器头", action: "吸除血液、分泌物、冲洗液" },
+        { name: "巾钳", action: "固定无菌巾、建立无菌区" },
+        { name: "卵圆钳", action: "夹持纱布、消毒皮肤、夹持脏器" },
+        { name: "腔镜摄像头", action: "提供手术画面" }
+    ];
+
+    let cards = [];                 // 卡片数组 { id, pairId, type, text, eliminated }
+    let selectedCardIndex = null;  // 当前选中的卡片索引
+    let gameActive = false;         // 游戏是否进行中
+    let matchedCount = 0;           // 已成功匹配的对数
+    const totalPairs = INSTRUMENTS.length;  // 共10对
+
+    // 音频上下文 (Web Audio 合成音效)
+    let audioCtx = null;
+    let soundEnabled = false;
+
+    // 初始化音频 (需要用户手势启动)
+    function initAudio() {
+        if (audioCtx) return;
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            console.warn("Web Audio API 不支持");
+        }
+    }
+
+    // 播放指定音调 (频率, 时长, 音量, 波形)
+    function playTone(freq, duration, volume = 0.3, type = 'sine') {
+        if (!audioCtx || !soundEnabled) return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.value = volume;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        osc.stop(now + duration);
+    }
+
+    // 碰撞声音 (泡泡消失时的碰撞感)
+    function playCollisionSound() {
+        if (!soundEnabled) return;
+        // 短促撞击感：低频碰撞 + 高频脆响
+        playTone(280, 0.1, 0.25, 'sawtooth');
+        setTimeout(() => {
+            if (audioCtx && soundEnabled) playTone(520, 0.08, 0.2, 'triangle');
+        }, 15);
+    }
+
+    // 匹配成功消除声音 (清脆消除)
+    function playMatchSuccessSound() {
+        if (!soundEnabled) return;
+        playTone(880, 0.12, 0.28, 'sine');
+        setTimeout(() => {
+            if (audioCtx && soundEnabled) playTone(720, 0.1, 0.2, 'sine');
+        }, 25);
+    }
+
+    // 配对错误声音 (低沉错误)
+    function playErrorSound() {
+        if (!soundEnabled) return;
+        playTone(320, 0.28, 0.3, 'sawtooth');
+    }
+
+    // 胜利声音 (辉煌悦耳)
+    function playVictorySound() {
+        if (!soundEnabled) return;
+        const notes = [523, 659, 784, 1046];
+        notes.forEach((f, idx) => {
+            setTimeout(() => {
+                if (audioCtx && soundEnabled) playTone(f, 0.4, 0.22, 'sine');
+            }, idx * 150);
+        });
+        setTimeout(() => {
+            if (audioCtx && soundEnabled) playTone(1318, 0.7, 0.28, 'triangle');
+        }, 500);
+    }
+
+    // 显示胜利界面并播放胜利音
+    function showVictory() {
+        const overlay = document.getElementById('victoryOverlay');
+        overlay.classList.add('show');
+        playVictorySound();
+        gameActive = false;   // 游戏结束，不可再点泡泡
+        selectedCardIndex = null;
+    }
+
+    function hideVictory() {
+        const overlay = document.getElementById('victoryOverlay');
+        overlay.classList.remove('show');
+    }
+
+    // 随机生成每个泡泡的立体渐变色 (基于 pairId 和 type 保证每个卡片色调不同且鲜艳)
+    function getBubbleGradient(pairId, type, seedOffset) {
+        const hue = (pairId * 27 + (type === 'name' ? 15 : 40) + seedOffset) % 360;
+        const sat = 55 + (pairId % 30);
+        const light1 = 68;
+        const light2 = 48;
+        return `radial-gradient(circle at 30% 35%, hsl(${hue}, ${sat}%, ${light1}%), hsl(${hue}, ${sat}%, ${light2}%))`;
+    }
+
+    // 渲染网格 (动态生成泡泡，并根据卡片状态应用样式)
+    function renderGrid() {
+        const grid = document.getElementById('bubbleGrid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        cards.forEach((card, idx) => {
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'bubble-card';
+            if (card.eliminated) {
+                cardDiv.classList.add('eliminated');
+            }
+            if (selectedCardIndex === idx && !card.eliminated) {
+                cardDiv.classList.add('selected');
+            }
+
+            const inner = document.createElement('div');
+            inner.className = 'bubble-inner';
+            // 每个泡泡独立配色，保证3D立体视觉多彩
+            const gradient = getBubbleGradient(card.pairId, card.type, idx * 3);
+            inner.style.background = gradient;
+            inner.textContent = card.text;
+            inner.style.whiteSpace = 'normal';
+            cardDiv.appendChild(inner);
+
+            cardDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!gameActive) return;
+                if (card.eliminated) return;
+                handleCardClick(idx);
+            });
+            grid.appendChild(cardDiv);
+        });
+    }
+
+    // 核心配对逻辑
+    function handleCardClick(clickedIdx) {
+        if (!gameActive) return;
+        const clickedCard = cards[clickedIdx];
+        if (clickedCard.eliminated) return;
+
+        // 情况1：无选中卡片
+        if (selectedCardIndex === null) {
+            selectedCardIndex = clickedIdx;
+            renderGrid();
+            return;
+        }
+
+        // 情况2：点击同一个卡片 -> 取消选中
+        if (selectedCardIndex === clickedIdx) {
+            selectedCardIndex = null;
+            renderGrid();
+            return;
+        }
+
+        // 情况3：已选中一张，尝试配对
+        const firstCard = cards[selectedCardIndex];
+        const secondCard = cards[clickedIdx];
+
+        // 匹配条件：属于同一个 pairId 且 一个是器械名称(name) 一个是作用(action)
+        const isMatch = (firstCard.pairId === secondCard.pairId && firstCard.type !== secondCard.type);
+
+        if (isMatch) {
+            // 配对成功 → 消除两个泡泡
+            if (firstCard.eliminated || secondCard.eliminated) {
+                // 安全起见，如果已消除则重置选中
+                selectedCardIndex = null;
+                renderGrid();
+                return;
+            }
+
+            // 1. 消失时发出碰撞的声音 (泡泡消除瞬间)
+            playCollisionSound();
+
+            // 2. 标记消除
+            firstCard.eliminated = true;
+            secondCard.eliminated = true;
+            matchedCount++;
+
+            // 3. 匹配成功额外发出消除的声音 (清脆成功音)
+            playMatchSuccessSound();
+
+            // 清空选中状态
+            selectedCardIndex = null;
+            renderGrid();
+
+            // 检查是否全部配对完成
+            if (matchedCount === totalPairs) {
+                gameActive = false;
+                showVictory();
+            }
+        } else {
+            // 配对失败: 播放错误声音，并且第一次点击的泡泡再次出现（取消选中即可）
+            playErrorSound();
+            // 取消选中，相当于第一次泡泡“再次出现”（只是高亮消失，没有消除）
+            selectedCardIndex = null;
+            renderGrid();
+        }
+    }
+
+    // 打乱数组 (Fisher-Yates)
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    // 初始化/重置卡片数据 (生成 器械名称 + 器械作用 各一张，并打乱顺序)
+    function initCardsData() {
+        const newCards = [];
+        INSTRUMENTS.forEach((inst, pairId) => {
+            // 名称泡泡
+            newCards.push({
+                id: `pair-${pairId}-name`,
+                pairId: pairId,
+                type: 'name',
+                text: inst.name,
+                eliminated: false,
+            });
+            // 作用泡泡
+            newCards.push({
+                id: `pair-${pairId}-action`,
+                pairId: pairId,
+                type: 'action',
+                text: inst.action,
+                eliminated: false,
+            });
+        });
+        // 完全打乱顺序 (中文名称与作用混合)
+        return shuffleArray(newCards);
+    }
+
+    // 开始新游戏 (重置所有状态，重新洗牌)
+    function startNewGame() {
+        // 启用声音 (在用户点击开始按钮时初始化或恢复音频上下文)
+        if (!audioCtx) {
+            initAudio();
+        }
+        if (audioCtx) {
+            // 恢复音频上下文 (如果处于挂起状态)
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume().then(() => {
+                    soundEnabled = true;
+                }).catch(e => console.log("音频自动播放受限，游戏仍可进行"));
+            } else {
+                soundEnabled = true;
+            }
+        } else {
+            soundEnabled = false;
+        }
+
+        // 重置游戏标志
+        gameActive = true;
+        selectedCardIndex = null;
+        matchedCount = 0;
+        hideVictory();
+
+        // 生成全新打乱卡片
+        cards = initCardsData();
+        // 确保所有卡片消除标记为 false (初始状态全部可见)
+        cards.forEach(c => { c.eliminated = false; });
+        renderGrid();
+    }
+
+    // 页面初始化 (未开始时显示卡片但不可交互，开始按钮启动)
+    function initPreview() {
+        // 初始卡片数据 (展示用，但游戏未激活不可点击)
+        cards = initCardsData();
+        gameActive = false;
+        selectedCardIndex = null;
+        matchedCount = 0;
+        renderGrid();
+
+        const startBtn = document.getElementById('startGameBtn');
+        if (startBtn) {
+            // 避免重复绑定，使用新按钮替换
+            const newBtn = startBtn.cloneNode(true);
+            startBtn.parentNode.replaceChild(newBtn, startBtn);
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                startNewGame();
+            });
+        }
+
+        // 点击胜利浮层背景可关闭 (不干扰游戏，关闭后需用户点击开始才能重置)
+        const overlay = document.getElementById('victoryOverlay');
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.remove('show');
+                // 注意：此时游戏并未重新开始，但浮层关闭后游戏仍处于胜利结束状态，需点开始按钮
+            }
+        });
+    }
+
+    // 额外处理：如果游戏胜利后再次点击开始，startNewGame会重置所有。
+    // 确保所有声音效果符合要求：消失时碰撞声 + 匹配成功消除声；错误声；胜利时成功声。
+    // 开始按钮后游戏正式启动。
+    window.addEventListener('DOMContentLoaded', () => {
+        initPreview();
+        // 预加载音频(轻量级解锁，但真正的声音标志由开始按钮启用)
+        document.body.addEventListener('click', () => {
+            if (audioCtx && audioCtx.state === 'suspended' && !soundEnabled) {
+                audioCtx.resume().catch(e=>{});
+            }
+        }, { once: true });
+    });
+</script>
+</body>
+</html>
